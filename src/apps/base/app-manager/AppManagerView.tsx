@@ -1,6 +1,7 @@
-import { memo, useCallback, useEffect } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import type { ComponentType } from "react";
 import { MenuBar } from "@/components/layout/MenuBar";
+import { ExcelsiorDesktop } from "@/components/layout/excelsior/ExcelsiorDesktop";
 import { Desktop } from "@/components/layout/Desktop";
 import { DesktopCornerMask } from "@/components/layout/desktop/DesktopCornerMask";
 import { Dock } from "@/components/layout/Dock";
@@ -49,10 +50,19 @@ export function AppManagerView({
   navigateToNextInstance,
   navigateToPreviousInstance,
 }: AppManagerViewModel) {
+  const [conceptDesktop, setConceptDesktop] = useState(() => {
+    try { return localStorage.getItem("excelsior-desktop-layout") !== "classic"; }
+    catch { return true; }
+  });
+  const hasVisibleWindows = useAppStore((state) => Object.values(state.instances).some((instance) => instance.isOpen && !instance.isMinimized));
+  const setLayout = (concept: boolean) => {
+    setConceptDesktop(concept);
+    try { localStorage.setItem("excelsior-desktop-layout", concept ? "concept" : "classic"); } catch { /* Session-only preference when storage is unavailable. */ }
+  };
   return (
     <>
-      {showDesktopMenuBar && <MenuBar />}
-      <Dock />
+      {showDesktopMenuBar && (!conceptDesktop || hasVisibleWindows) && <MenuBar />}
+      {(!conceptDesktop || hasVisibleWindows) && <Dock />}
       {openInstanceIds.map((instanceId) => (
         <ManagedAppInstance
           key={instanceId}
@@ -69,12 +79,16 @@ export function AppManagerView({
         />
       ))}
 
+      {conceptDesktop ? <ExcelsiorDesktop onClassic={() => setLayout(false)} /> : <>
       <Desktop
         apps={apps}
         toggleApp={(appId, initialData, launchOrigin) => {
           launchApp(appId, initialData, undefined, false, launchOrigin);
         }}
       />
+
+      <button type="button" className="ex-concept-return" onClick={() => setLayout(true)}>EXCELSIOR desktop ↗</button>
+      </>}
 
       <SpotlightSearch />
 
